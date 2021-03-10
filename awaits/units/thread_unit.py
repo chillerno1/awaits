@@ -3,7 +3,7 @@ from awaits.units.abstract_unit import AbstractUnit
 
 class ThreadUnit(AbstractUnit):
     """
-    Экземпляр класса соответствует одному потоку. Здесь выполняются таски.
+    An instance of the class corresponds to one thread. Tasks are performed here.
     """
     def __init__(self, queue, pool, index):
         self.index = index
@@ -12,7 +12,7 @@ class ThreadUnit(AbstractUnit):
 
     def run(self):
         """
-        Принимаем из очереди таски и выполняем их.
+        We accept tasks from the queue and execute them.
         """
         while True:
             try:

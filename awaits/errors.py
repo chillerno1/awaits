@@ -1,5 +1,5 @@
 class IncorrectUseOfTheDecoratorError(ValueError):
     """
-    Когда в декоратор передали что-то не то.
+    When something was passed to the decorator.
     """
     pass

@@ -3,7 +3,7 @@ from awaits.common_data import CommonData
 
 class config(object):
     """
-    Установка глобальных параметров.
+    Setting global parameters.
     """
     allowed_settings = {
         'pool_size': (int, ),

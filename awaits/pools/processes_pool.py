@@ -10,7 +10,7 @@ def test():
 class ProcessesPool(AbstractPool):
     def queue_size(self):
         """
-        ПРИМЕРНЫЙ размер очереди, см. документацию:
+        APPROXIMATE queue size, see documentation:
         https://docs.python.org/3/library/queue.html#queue.Queue.qsize
         """
         size = self.queue.qsize()
