@@ -44,7 +44,7 @@ def sum(a, b):
   return a + b
 
 # Now sum is a coroutine! While it is running in a separate thread, control is passed to the event-loop.
-print(asyncio.run(sum (2, 2)))
+print(asyncio.run(sum(2, 2)))
 ```
 
 Done! We made a non-blocking coroutine out of a regular function for your event-loop, to which we now apply the await syntax.
