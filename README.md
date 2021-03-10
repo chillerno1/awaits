@@ -1,36 +1,37 @@
-# awaits - делаем работу с асинхронными / многопоточными приложениями проще
+# **Awaits** - makes working with asynchronous / multithreaded applications easier
 
-Данная библиотека решает 3 проблемы:
-
-- Асинхронное программирование с использованием синтаксиса async / await теряет смысл, если в коде часто встречаются куски с "тяжелыми" вычислениями или иными задачами, которые блокируют event-loop. Зато теперь вы можете навесить на такую "тяжелую" функцию декоратор [```@awaitable```](#декоратор-awaitable) и она станет корутиной, которая будет исполняться в отдельном потоке, не блокируя event-loop. Во всем остальном это будет совершенно обычная корутина.
-- Многопоточное программирование многословно. Чтобы заставить ваш код исполняться в многопоточном режиме, вам нужно создавать объекты потоков, передавать туда нужные функции и запускать потоки. Теперь же вам достаточно навесить на обычную функцию декоратор и она автоматически будет исполняться в многопоточном режиме.
-- Частое создание потоков в программе требует постоянно отслеживать создание потоков и управление ими. Здесь же минимальным уровнем абстракции для вас становится группа потоков (pool of threads), а не какой-то отдельный поток. Ими становится удобно управлять в рамках т. н. "комнат" (rooms) с такими группами, где каждой группе присваивается имя.
-
-Прочитайте документацию ниже, чтобы увидеть, как все это работает.
+> **Note:** All credit goes to the original creator [pomponchik](https://github.com/pomponchik), I've simply forked his [repo](https://github.com/pomponchik/awaits) and used google translate on the docs to help with my own understanding. 
 
 
+This library solves 3 problems:
 
-## Оглавление
+- Asynchronous programming using the async / await syntax loses its meaning if the code often contains pieces with "heavy" calculations or other tasks that block the event-loop. But now you can hang the decorator [```@awaitable```](#decorator-awaitable) on such a "heavy" function and it will become a coroutine that will be executed in a separate thread without blocking the event-loop. In all other respects, it will be a completely ordinary coroutine.
+- Multi-threaded programming is verbose. To make your code run in multithreaded mode, you need to create thread objects, pass the desired functions there and start the threads. Now you just need to hang a decorator on an ordinary function and it will automatically be executed in multithreaded mode.
+- Frequent creation of threads in a program requires constantly monitoring and management of the created threads. Here, a pool of threads becomes the minimum level of abstraction for you, not a separate thread. You can conveniently manage them within named groups called "rooms".
 
-- [**Быстрый старт**](#быстрый-старт)
-- [**Как это все работает?**](#как-это-все-работает)
-- [**Как работает группа потоков?**](#как-работает-группа-потоков)
-- [**Что такое "комната"?**](#что-такое-комната)
-- [**Об объекте задачи**](#об-объекте-задачи)
-- [**Декоратор ```@awaitable```**](#декоратор-awaitable)
-- [**Декоратор ```@shoot```**](#декоратор-shoot)
-- [**Настройки**](#настройки)
+Read the documentation below to see how it all works.
+
+## Table of Contents
+
+- [**Quick start**](#quick-start)
+- [**How does it work?**](#how-does-it-work)
+- [**How does a thread group work?**](#how-does-a-thread-group-work?)
+- [**What is a "room"?**](#what-is-a-"room"?)
+- [**About the Task object**](#About-the-Task-object)
+- [**Decorator ```@awaitable```**](#decorator-awaitable)
+- [**Decorator ```@shoot```**](#decorator-shoot)
+- [**Settings**](#settings)
 
 
-## Быстрый старт
+## Quick start
 
-Установите awaits через [pip](https://pypi.org/project/awaits/):
+Install awaits via [pip](https://pypi.org/project/awaits/):
 
 ```
 $ pip install awaits
 ```
 
-Теперь просто импортируйте декоратор [```@awaitable```](#декоратор-awaitable) и примените его к вашей функции. Никаких настроек, ничего лишнего - все уже работает:
+Now, just import the [```@awaitable```](#awaitable-decorator) and apply it to your function. No settings, nothing superfluous - everything is already working:
 
 ```python
 import asyncio
@@ -39,16 +40,16 @@ from awaits.awaitable import awaitable
 
 @awaitable
 def sum(a, b):
-  # Какой-то сложный датасаенз. Что-то, что вычисляется долго и мешает вашему event-loop'у жить.
+  # Some complex dataset. Something that takes a long time to compute and prevents your event-loop from living.
   return a + b
 
-# Теперь sum - это корутина! Пока она выполняется в отдельном потоке, управление передается в event-loop.
-print(asyncio.run(sum(2, 2)))
+# Now sum is a coroutine! While it is running in a separate thread, control is passed to the event-loop.
+print(asyncio.run(sum (2, 2)))
 ```
 
-Готово! Мы сделали из обычной функции неблокирующую ваш event-loop корутину, к которой теперь применим синтаксис await.
+Done! We made a non-blocking coroutine out of a regular function for your event-loop, to which we now apply the await syntax.
 
-Если ваша функция ничего не возвращает, к ней можно применить другой декоратор, [```@shoot```](#декоратор-shoot):
+If your function returns nothing, another decorator can be applied to it, [```@shoot```](#decorator-shoot):
 
 ```python
 from awaits.shoot import shoot
@@ -56,46 +57,46 @@ from awaits.shoot import shoot
 
 @shoot
 def hello():
-  # Тоже что-то тяжелое, но результат чего вам по какой-то причине не нужен.
+  # Also something heavy, but for some reason you don't need the result of which.
   print('Hello world!')
 
-# Функция будет "отстрелена" исполняться в отдельный поток, не блокируя основной.
+# The function will be "shot" executed in a separate thread without blocking the main one.
 hello()
 ```
 
-Ваша функция будет исполняться в другом потоке, в то время как основной может уже заняться чем-то еще.
+Your function will run on a different thread, while the main one might be doing something else.
 
-Более подробно о возможностях библиотеки awaits читайте ниже.
-
-
-## Как это все работает?
-
-Базовым "примитивом" библиотеки является [группа потоков](#как-работает-группа-потоков) (threads pool). "Сердцем" группы является очередь (queue) с задачами (объектами класса [```Task```](#об-объекте-задачи)). Когда вы создаете новую группу потоков, внутри себя она порождает сколько-то потоков с "воркерами", которые постоянно ждут новых задач из очереди. Как только в очереди появляется новая задача, первый же освободившийся воркер выполняет ее.
-
-Чтобы выполнить в группе произвольную функцию, вам достаточно передать ее туда вместе с необходимыми аргументами. При этом группа вернет вам объект класса [```Task```](#об-объекте-задачи), в котором по значению атрибута ```done``` вы можете отслеживать, выполнена ваша задача или нет. Если она выполнена - можете забрать результат из атрибута ```result```. Более подробно о работе с группами потоков читайте в [соответствующем разделе](#как-работает-группа-потоков).
-
-Для удобства управления несколькими группами, библиотека содержит абстракцию "комната". По своей сути это обертка вокруг словаря с группами потоков. Обращаясь к "комнате" по ключу, вы либо получаете новую группу потоков, если ранее этой группы не существовало, либо уже имеющуюся группу, если ранее она создавалась. Так вам становится не нужно вручную создавать группы потоков.
-
-Для работы декораторов используется "комната", хранящаяся в синглтоне. Обернутые в декораторы [```@awaitable```](#декоратор-awaitable) и [```@shoot```](#декоратор-shoot) функции будут выполняться в группах потоков из одной и той же комнаты (по умолчанию - в одной группе потоков под названием ```"base"```).
-
-За счет такой компоновки, весь менеджмент потоков происходит "под капотом" и вам больше не нужно задумываться над тем, в каком именно потоке выполнится ваша функция. Она выполнится в том, который раньше всех освободится.
+Read more about the awaits library capabilities below.
 
 
-## Как работает группа потоков?
+## How does it work?
 
-Группа потоков - это экземпляр класса ```ThreadsPool```. Импортируем его:
+The base "shell" of this library is the [thread group](#how-does-a-thread-group-work?) (threads pool). The "heart" of the group is a queue with tasks (objects of class [```Task```](#about-task-object)). When you create a new group of threads, internally it spawns some threads with "workers" that are constantly waiting for new tasks from the queue. As soon as a new task appears in the queue, the first freed worker executes it.
+
+To execute an arbitrary function in a group, you just need to pass it there along with the necessary arguments. In this case, the group will return you an object of the class [```Task```](#about-object-task), in which, by the value of the attribute ```done``` you can track whether your task has been completed or not. If it is done, you can pick up the result from the ```result``` attribute. For more information on working with thread groups, see [the appropriate section](#how-does-a-thread-group-work?).
+
+For the convenience of managing multiple groups, the library contains the abstraction "room". At its core, it is a wrapper around a dictionary with groups of threads. By accessing the "room" by key, you either get a new group of threads if this group did not exist before, or an existing group if it was previously created. This eliminates the need to manually create thread groups.
+
+The decorators use the "room" stored in the singleton. Wrapped in decorators [```@awaitable```](#decorator-awaitable) and [```@shoot```](#decorator-shoot) functions will be executed in groups of threads from the same room (by by default - in one thread group called ```base```).
+
+Due to this arrangement, all thread management takes place "under the hood" and you no longer need to think about which thread your function will be executed in. It will be fulfilled in the one that is freed before anyone else.
+
+
+## How does a thread group work?
+
+A thread group is an instance of the ```ThreadsPool``` class. Let's import it:
 
 ```python
 from awaits.pools.threads_pool import ThreadsPool
 ```
 
-При инициализации экземпляра будут созданы потоки. Число потоков в группе вы указываете в конструкторе класса:
+Threads will be created when the instance is initialized. You specify the number of threads in the group in the class constructor:
 
 ```python
 threads = ThreadsPool(5)
 ```
 
-Теперь, когда группа создана, ей можно давать задания, используя метод ```do()```:
+Now that the group has been created, you can give it tasks using the ```do()``` method:
 
 ```python
 def function(a, b, c, d=5, e=5):
@@ -104,21 +105,21 @@ def function(a, b, c, d=5, e=5):
 task = threads.do(function, 1, 2, 3, d=10, e=20)
 ```
 
-Первым параметром туда передается функция, которую требуется выполнить, а далее все те же параметры и в том же порядке, как при оригинальном вызове этой функции.
+The first parameter is passed to the function to be executed, and then all the same parameters and in the same order as in the original call of this function.
 
-Что тут произошло под капотом? Метод ```do()``` создал объект класса [```Task```](#об-объекте-задачи), передав туда функцию для выполнения и все ее параметры, и положил его в очередь. Объект задачи он вам вернул, чтобы вы могли отслеживать прогресс выполнения и результат. Воркеры из других потоков постоянно ждут появления новых элементов в очереди. Если хоть один из них свободен - он сразу получит вашу задачу и выполнит ее. Если нет, задача будет ждать в очереди освобождения первого воркера.
+What happened under the hood? The ```do()``` method created an object of class [```Task```](#about-task-object), passing there the function to be executed and all its parameters, and put it in the queue. He returned the task object to you so that you can track the progress and the result. Workers from other threads are constantly waiting for new items to appear in the queue. If at least one of them is free, he will immediately receive your task and complete it. If not, the task will wait in the queue for the first worker to be released.
 
-Как только задача будет выполнена, вы можете получить результат:
+Once the task is done, you can get the result:
 
 ```python
-# Флаг task.done в положении True свидетельствует о том, что задача выполнена и вы можете получить результат.
+# The task.done flag set to True indicates that the task is complete and you can get the result.
 while not task.done:
     pass
 
 print(task.result)
 ```
 
-Если при выполнении функции случилась ошибка, в объекте задачи атрибут ```error``` будет установлен в положение ```True```, а получить экземпляр исключения вы можете из атрибута ```exception```:
+If an error occurs during the execution of the function, the ```error``` attribute in the task object will be set to ```True```, and you can get an exception instance from the ```exception``` attribute:
 
 ```python
 def error_function(a, b):
@@ -134,11 +135,11 @@ if task.error:
 ```
 
 
-## Что такое "комната"?
+## What is a "room"?
 
-Комната (room) - это абстракция над группами потоков, позволяющая отдавать задания разным группам, называя их по именам. По сути это обертка над словарем.
+A room is an abstraction over thread groups, allowing assignments to be assigned to different groups by name. It is essentially a wrapper over a dictionary.
 
-Создадим объект комнаты:
+Let's create a room object:
 
 ```python
 from awaits.threads_pools_room import ThreadsPoolsRoom
@@ -147,40 +148,40 @@ from awaits.threads_pools_room import ThreadsPoolsRoom
 room = ThreadsPoolsRoom(5)
 ```
 
-Число, передаваемое в конструктор - количество потоков в каждой из групп данной комнаты.
+The number passed to the constructor is the number of threads in each of the groups in this room.
 
-Конкретную группу потоков можно получить, используя синтаксис словаря:
+A specific thread group can be obtained using the dictionary syntax:
 
 ```python
 pool = room['some_key']
 ```
 
-Поскольку мы впервые обращаемся к комнате по этому ключу, она создаст новый объект класса [```ThreadsPool```](#как-работает-группа-потоков) и вернет его. При последующих обращениях по этому ключу, она будет возвращать тот же самый объект.
+Since this is the first time we are accessing the room with this key, it will create a new object of class [```ThreadsPool```](#how-thread-group-works) and return it. On subsequent calls with this key, it will return the same object.
 
 
-## Об объекте задачи
+## About the Task object
 
-Задача - это объект класса ```Task```. В конструктор объекта первым аргументом передается функция для выполнения, а последующими - ее аргументы:
+A task is an object of the [```Task```](#about-task-objects) class. The first argument to the object's constructor is the function to be executed, and the next - its arguments:
 
 ```python
 from awaits.task import Task
 
 
 def hello_something(something, sign='!'):
-  hello_string = f'Hello {something}{sign}'
+  hello_string = f'Hello {something} {sign}'
   print(hello_string)
   return hello_string
 
 task = Task(hello_something, 'world')
 ```
 
-В неактивированном состоянии задача просто хранит в себе функцию и ее аргументы. Чтобы выполнить функцию с заданными аргументами, необходимо вызвать у задачи метод ```do()```:
+In the non-activated state, the task simply stores the function and its arguments. To execute a function with the given arguments, you need to call the ```do()``` method on the task:
 
 ```python
 task.do()
 ```
 
-Флаг ```task.done``` будет установлен в положение ```True```, когда задача будет выполнена. После этого вы можете получить результат выполнения из атрибута ```result```:
+The ```task.done``` flag will be set to ```True``` when the task is completed. After that, you can get the execution result from the ```result``` attribute:
 
 ```python
 while not task.done:
@@ -189,7 +190,7 @@ while not task.done:
 print(task.result)
 ```
 
-Если при выполнении функции случилась ошибка, в объекте задачи атрибут ```error``` будет установлен в положение ```True```, а получить экземпляр исключения вы можете из атрибута ```exception```:
+If an error occurs during the execution of the function, the ```error``` attribute in the task object will be set to ```True```, and you can get an exception instance from the ```exception``` attribute:
 
 ```python
 def error_function(a, b):
@@ -205,11 +206,11 @@ if task.error:
 ```
 
 
-## Декоратор ```@awaitable```
+## Decorator ```@awaitable```
 
-Прочитав документацию выше, вы уже научились создавать группы потоков и комнаты с ними, а также давать потокам на исполнение различные задания. Однако делать даже это вручную не обязательно.
+After reading the documentation above, you have already learned how to create thread groups and rooms with them, as well as give threads to execute various tasks. However, it is not necessary to do even this manually.
 
-Декоратор ```@awaitable``` превращает обычную функцию в корутину, т. е. в функцию, с которой можно работать через await-синтаксис Python. Давайте попробуем создать такую функцию:
+The ```@awaitable``` decorator turns an ordinary function into a coroutine, that is, into a function that can be manipulated using Python's await syntax. Let's try to create a function like this:
 
 ```python
 from awaits.awaitable import awaitable
@@ -220,26 +221,26 @@ def heavy_math_function(x, y):
   return x * y
 ```
 
-При попытке выполнения функции, она будет вести себя как обычная корутина. Однако фактически ее код будет выполняться в группе потоков. Пока код выполняется, управление будет передано в event-loop.
+When trying to execute a function, it will behave like a regular coroutine. However, in fact, its code will run on a thread group. While the code is running, control will be transferred to the event-loop.
 
 ```python
-# Проверяем, что это действительно корутина.
-print(asyncio.run(heavy_math_function(5, 5)))
+# Check that this is indeed a coroutine.
+print (asyncio.run(heavy_math_function(5, 5)))
 ```
 
-"Под капотом" при этом происходит периодический опрос состояния задачи с последующим "засыпанием" (вызовом ```asyncio.sleep()```) на некий промежуток времени. Как только задача выполнена, ее результат возвращается. Если выполнение прервано исключением - оно извлекается из [объекта задачи](#об-объекте-задачи) и снова поднимается.
+In this case, "under the hood", the task status is periodically polled, followed by "falling asleep" (by calling ```asyncio.sleep()```) for a certain period of time. Once the task is completed, its result is returned. If execution is interrupted by an exception, it is retrieved from [task object](#About-the-Task-object) and raised again.
 
-Промежуток, на который функция "засыпает" между опросами о готовности, по умолчанию берется из [глобальных настроек](#настройки) библиотеки. При необходимости, вы можете указать его в фабрике декоратора (в секундах):
+The interval for which the function "sleeps" between readiness polls is taken by default from the [global settings](#settings) library. If necessary, you can specify it in the decorator factory (in seconds):
 
 ```python
-@awaitable(delay=0.5)
+@awaitable(delay = 0.5)
 def heavy_math_function(x, y):
   return x * y
 ```
 
-Ручное управление вам может быть полезно, к примеру, в случае особо "тяжелых" функций, которые нет смысла опрашивать слишком часто.
+Manual control can be useful for you, for example, in the case of especially "heavy" functions that do not make sense to poll too often.
 
-Кроме того, отдельным параметром вы можете указать имя группы потоков, в которой вы хотите чтобы выполнялся код. По умолчанию используется группа ```"base"```.
+In addition, with a separate parameter, you can specify the name of the thread group in which you want the code to be executed. The default group is ```"base"```.
 
 ```python
 @awaitable(pool='gravities')
@@ -247,9 +248,9 @@ def heavy_math_function(x, y):
   return x * y
 ```
 
-## Декоратор ```@shoot```
+## Decorator ```@shoot```
 
-Этот декоратор проще, чем [```@awaitable```](#декоратор-awaitable). Обернутая им функция будет просто "отстрелена" в группу потоков, без ожидания результата. Возвращен при этом будет объект класса [```Task```](#об-объекте-задачи), что позволяет вручную отслеживать статус выполнения.
+This decorator is simpler than [```@awaitable```](#awaitable-decorator). The function wrapped by it will simply be "shot" into the thread group, without waiting for the result. In this case, an object of the class [```Task```](#about-task-object) will be returned, which allows you to manually track the execution status.
 
 ```python
 from awaits.shoot import shoot
@@ -267,7 +268,7 @@ while not task.done:
 print(task.result)
 ```
 
-При необходимости, вы можете указать название группы потоков, в котором хотите, чтобы выполнялась ваша функция:
+If necessary, you can specify the name of the thread group in which you want your function to be executed:
 
 ```python
 @shoot(pool='gravities')
@@ -275,24 +276,24 @@ def other_heavy_math_function(x, y):
   return x * y
 ```
 
-По умолчанию также используется группа ```"base"```.
+The default is also the ```"base"``` group.
 
-> Если основной поток исполнения программы подойдет к концу, "отстреленные" функции могут не успеть выполниться, что может создать у вас ложное впечатление сломанной программы. Не стоит использовать данный декоратор, если для вас это критично.
+> If the main flow of program execution comes to an end, the "shot" functions may not be executed in time, which may give you a false impression of a broken program. You should not use this decorator if it is critical for you.
 
-## Настройки
+## Settings
 
-Вы можете настроить параметры по умолчанию самостоятельно. Для этого необходимо вызвать метод ```set``` у класса ```config```:
+You can customize the default settings yourself. To do this, you need to call the ```set``` method of the ```config``` class:
 
 ```python
 from awaits.config import config
 
 
-# Для примера устанавливаем частоту опроса задачи в декораторе @awaitable на значение 0.5 сек.
+# For example, set the polling rate of the task in the @awaitable decorator to 0.5 sec.
 config.set(delay=10.5)
 ```
 
-Данный метод принимает следующие именованные параметры:
+This method takes the following named parameters:
 
-  **pool_size** (int) - количество потоков в группе по умолчанию. Важно, чтобы данная настройка была выставлена до выполнения первой задачи. Если не установить этот параметр, он будет равен 10.
+ **pool_size**(int) - number of threads in the group by default. It is important that this setting is set before completing the first task. If this parameter is not set, it will be equal to 10.
 
-  **delay** (int или float) - значение задержки (в секундах) между итерациями опроса завершенности задачи. Используется по умолчанию в декораторе [```@awaitable```](#декоратор-awaitable). Если не установить это значение вручную, будет использовано число ```0.001```.
+ **delay**(int or float) - delay value (in seconds) between iterations of polling task completion. Used by default in the [```@awaitable```](#awaitable-decorator). If you do not set this value manually, the number ```0.001``` will be used.
