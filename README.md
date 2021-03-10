@@ -225,7 +225,7 @@ When trying to execute a function, it will behave like a regular coroutine. Howe
 
 ```python
 # Check that this is indeed a coroutine.
-print (asyncio.run(heavy_math_function(5, 5)))
+print(asyncio.run(heavy_math_function(5, 5)))
 ```
 
 In this case, "under the hood", the task status is periodically polled, followed by "falling asleep" (by calling ```asyncio.sleep()```) for a certain period of time. Once the task is completed, its result is returned. If execution is interrupted by an exception, it is retrieved from [task object](#About-the-Task-object) and raised again.
@@ -233,7 +233,7 @@ In this case, "under the hood", the task status is periodically polled, followed
 The interval for which the function "sleeps" between readiness polls is taken by default from the [global settings](#settings) library. If necessary, you can specify it in the decorator factory (in seconds):
 
 ```python
-@awaitable(delay = 0.5)
+@awaitable(delay=0.5)
 def heavy_math_function(x, y):
   return x * y
 ```
